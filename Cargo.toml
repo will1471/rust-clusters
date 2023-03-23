@@ -1,0 +1,20 @@
+[package]
+name = "cluster"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rust-bert = "0.20.0"  # provides embedding stuff
+chrono = "0.4.24"     # datetime library
+dhat = "0.3.2"        # heap profiling
+serde = "1.0.156"     # serialization
+serde_json = "1.0.94" # json serialization
+rayon = "1.7.0"       # parallel iterators
+clap = "4.1.11"       # Command Line Argument Parser
+
+[profile.release]
+debug = true          # debug symbols in release build, for heap profile
+
+[features]
+dhat-heap = []    # if you are doing heap profiling
+dhat-ad-hoc = []  # if you are doing ad hoc profiling
