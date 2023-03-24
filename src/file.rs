@@ -24,7 +24,7 @@ pub fn load_text(filename: &str) -> (Vec<Vec<f32>>, Vec<String>) {
 
     time_it!(
         "sentence_embeddings",
-        let embeddings: Vec<Vec<f32>> = model.encode(&lines).unwrap();
+        let embeddings: Vec<Vec<f32>> = lines.chunks(1000).flat_map(|c|model.encode(c).unwrap()).collect();
     );
 
     (embeddings, lines)
