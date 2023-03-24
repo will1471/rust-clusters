@@ -9,10 +9,10 @@ type Scores = Vec<Vec<f32>>;
 type Index = usize;
 type Score = f32;
 type Clusters = Vec<(Index, Vec<Index>)>;
-type Community = (Index,Vec<Index>);
+type Community = (Index, Vec<Index>);
 
-const MIN_CLUSTER_SIZE: usize = 3;
-const MIN_SIMILARITY: f32 = 0.60;
+const MIN_CLUSTER_SIZE: usize = 5;
+const MIN_SIMILARITY: f32 = 0.70;
 
 fn dot(a: &Vec<f32>, b: &Vec<f32>) -> f32 {
     assert_eq!(a.len(), b.len());
@@ -79,7 +79,6 @@ pub fn cluster_using_discrete_stages(embeddings: Vec<Embedding>) -> Clusters {
 }
 
 pub fn cluster_using_combined_pipeline(embeddings: Vec<Embedding>) -> Clusters {
-
     fn scores_to_community(i: Index, scores: Vec<Score>) -> Option<Community> {
         let mut sorted: Vec<(Index, Score)> = scores.into_iter().enumerate().collect();
 
@@ -138,4 +137,49 @@ pub fn normalize_all(embeddings: Vec<Embedding>) -> Vec<Embedding> {
     );
 
     embeddings
+}
+
+/// This version uses ndarray for faster matrix multiplication
+/// Also optimized the communities stage, python version doesnt actually sort the members in the community
+/// It's back to using N^2 memory though, needs to have the pipeline added back...
+/// ndarray can probably do the normalization for us too...
+pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
+    use ndarray::prelude::*;
+
+    let a = Array::from_shape_vec(
+        (embeddings.len(), embeddings[0].len()),
+        embeddings.clone().into_iter().flatten().collect(),
+    )
+    .expect("to get dimension correct");
+
+    time_it!("mm",
+        let b = a.dot(&a.t());
+    );
+
+    time_it!("communities",
+        let mut c: Vec<Community> = vec![];
+        let mut i = 0;
+        for row in b.rows() {
+            let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
+            if count > MIN_CLUSTER_SIZE {
+                c.push(
+                    (
+                        i,
+                        row.indexed_iter()
+                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
+                            .collect()
+                    )
+                )
+            }
+            i = i + 1;
+        }
+    );
+
+    c.sort_unstable_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
+
+    time_it!("unique",
+        let found = unique_clusters(&c);
+    );
+
+    found
 }

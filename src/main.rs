@@ -20,13 +20,19 @@ fn cli() -> Command {
         )
         .subcommand(
             Command::new("cluster-stages")
-                .about("Read a file of vectors, dump a file of clusters")
+                .about("Read a file of vectors, dump a file of clusters\nUses N^2 memory, not optimized")
                 .arg(arg!(<VECTOR_FILE> "input file"))
                 .arg(arg!(<CLUSTER_FILE> "outfile file")),
         )
         .subcommand(
             Command::new("cluster-merged")
-                .about("Read a file of vectors, dump a file of clusters")
+                .about("Read a file of vectors, dump a file of clusters\nUses low memory, not optimized")
+                .arg(arg!(<VECTOR_FILE> "input file"))
+                .arg(arg!(<CLUSTER_FILE> "outfile file")),
+        )
+        .subcommand(
+            Command::new("cluster-ndarray")
+                .about("Read a file of vectors, dump a file of clusters\nUses N^2 memory, optimized")
                 .arg(arg!(<VECTOR_FILE> "input file"))
                 .arg(arg!(<CLUSTER_FILE> "outfile file")),
         )
@@ -78,6 +84,19 @@ fn main() {
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_combined_pipeline(embeddings);
+            );
+            file::dump_as_json(output, &clusters);
+        }
+
+        Some(("cluster-ndarray", submatch)) => {
+            let input = get_arg!(submatch, "VECTOR_FILE");
+            let output = get_arg!(submatch, "CLUSTER_FILE");
+
+            let embeddings = file::load_vectors_from_json(input);
+            let embeddings = cluster::normalize_all(embeddings);
+            time_it!(
+                "main_cluster",
+                let clusters = cluster::cluster_using_ndarray(embeddings);
             );
             file::dump_as_json(output, &clusters);
         }

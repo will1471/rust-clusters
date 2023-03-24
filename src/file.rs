@@ -35,7 +35,7 @@ where
 {
     time_it!(
         "dumping json",
-        std::fs::write(filename, serde_json::to_string(&data).unwrap()).expect("Failed to write file");
+        std::fs::write(filename, serde_json::to_string_pretty(&data).unwrap()).expect("Failed to write file");
     );
 }
 

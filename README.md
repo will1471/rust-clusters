@@ -67,3 +67,28 @@ dhat: The data has been saved to dhat-heap.json, and is viewable with dhat/dh_vi
 ```
 
 Todo, use binary format instead of json? Check the clustering still works? Try a matrix library...
+
+
+## Matrix Library
+
+Manged to write a faster N^2 version using ndarray, and some optimizations in the communities extraction.
+
+```
+$ cargo run --release -- cluster-stages 10k.json /dev/null | grep "Finished main_cluster"
+2023-03-24 21:03:59.770409 +00:00 Finished main_cluster, took: PT11.427306S
+
+$ cargo run --release -- cluster-ndarray 10k.json /dev/null | grep "Finished main_cluster"
+2023-03-24 21:04:09.301223100 +00:00 Finished main_cluster, took: PT1.179119700S
+```
+
+Memory usage of faster one higher because it copies the data into a matrix.
+
+```
+$ cargo run --release --features dhat-heap -- cluster-stages 10k.json /dev/null 2>&1 | grep gmax
+dhat: At t-gmax: 416,107,080 bytes in 20,130 blocks
+
+$ cargo run --release --features dhat-heap -- cluster-ndarray 10k.json /dev/null 2>&1 | grep gmax
+dhat: At t-gmax: 441,886,465 bytes in 10,027 blocks
+```
+
+Todo, make the low memory version this fast...
