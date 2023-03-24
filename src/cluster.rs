@@ -4,9 +4,12 @@ use rayon::prelude::*;
 
 use crate::time_it;
 
-type Clusters = Vec<(usize, Vec<usize>)>;
 type Embedding = Vec<f32>;
 type Scores = Vec<Vec<f32>>;
+type Index = usize;
+type Score = f32;
+type Clusters = Vec<(Index, Vec<Index>)>;
+type Community = (Index,Vec<Index>);
 
 const MIN_CLUSTER_SIZE: usize = 3;
 const MIN_SIMILARITY: f32 = 0.60;
@@ -16,24 +19,21 @@ fn dot(a: &Vec<f32>, b: &Vec<f32>) -> f32 {
     a.iter().zip(b.iter()).map(|(a, b)| a * b).sum()
 }
 
-fn communities(scores: &Scores) -> Clusters {
+fn communities(scores: Scores) -> Clusters {
     let mut communities: Clusters = Vec::new();
 
-    for (i, v) in scores.iter().enumerate() {
-        let mut sorted = v
-            .iter()
-            .enumerate()
-            .map(|i| (i.0, *i.1))
-            .collect::<Vec<(usize, f32)>>();
+    for (i, v) in scores.into_iter().enumerate() {
+        let mut sorted: Vec<(usize, f32)> = v.into_iter().enumerate().collect();
+
         sorted.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap());
 
         if sorted[MIN_CLUSTER_SIZE - 1].1 > MIN_SIMILARITY {
             communities.push((
                 i,
                 sorted
-                    .iter()
-                    .take_while(|(_, v)| *v > MIN_SIMILARITY)
-                    .map(|(i, _)| *i)
+                    .into_iter()
+                    .take_while(|(_, v)| v > &MIN_SIMILARITY)
+                    .map(|(i, _)| i)
                     .collect(),
             ));
         }
@@ -44,28 +44,30 @@ fn communities(scores: &Scores) -> Clusters {
 
 fn unique_clusters(communities: &Clusters) -> Clusters {
     let mut found: Clusters = Vec::new();
-    let mut seen: HashSet<usize> = HashSet::new();
+    let mut seen: HashSet<Index> = HashSet::new();
+
     for (centroid_idx, doc_idxs) in communities.iter() {
         if !doc_idxs.iter().any(|idx| seen.contains(idx)) {
             seen.extend(doc_idxs); // add all doc_idsx to the seen set
-            found.push((*centroid_idx, doc_idxs.clone()));
+            found.push((centroid_idx.to_owned(), doc_idxs.to_owned()));
         }
     }
+
     found
 }
 
 pub fn cluster_using_discrete_stages(embeddings: Vec<Embedding>) -> Clusters {
     time_it!(
     "scores",
-    let scores: Vec<Vec<f32>> = embeddings
+    let scores: Vec<Vec<Score>> = embeddings
         .par_iter()
-        .map(|v1| embeddings.iter().map(|v2| dot(v1, v2)).collect::<Vec<f32>>())
+        .map(|v1| embeddings.iter().map(|v2| dot(v1, v2)).collect())
         .collect();
     );
 
     time_it!(
         "communities",
-        let communities = communities(&scores);
+        let communities = communities(scores);
     );
 
     time_it!(
@@ -77,12 +79,9 @@ pub fn cluster_using_discrete_stages(embeddings: Vec<Embedding>) -> Clusters {
 }
 
 pub fn cluster_using_combined_pipeline(embeddings: Vec<Embedding>) -> Clusters {
-    fn scores_to_community(i: usize, embedding_scores: Vec<f32>) -> Option<(usize, Vec<usize>)> {
-        let mut sorted = embedding_scores
-            .iter()
-            .enumerate()
-            .map(|i| (i.0, *i.1))
-            .collect::<Vec<(usize, f32)>>();
+
+    fn scores_to_community(i: Index, scores: Vec<Score>) -> Option<Community> {
+        let mut sorted: Vec<(Index, Score)> = scores.into_iter().enumerate().collect();
 
         sorted.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap());
 
@@ -90,9 +89,9 @@ pub fn cluster_using_combined_pipeline(embeddings: Vec<Embedding>) -> Clusters {
             Some((
                 i,
                 sorted
-                    .iter()
-                    .take_while(|(_, v)| *v > MIN_SIMILARITY)
-                    .map(|p| p.0)
+                    .into_iter()
+                    .take_while(|(_, v)| v > &MIN_SIMILARITY)
+                    .map(|(i, _)| i)
                     .collect(),
             ))
         } else {
@@ -101,7 +100,7 @@ pub fn cluster_using_combined_pipeline(embeddings: Vec<Embedding>) -> Clusters {
     }
 
     time_it!("comb",
-        let mut communities = embeddings
+        let mut communities:Vec<Community> = embeddings
             .par_iter()
             .enumerate()
             .filter_map(
@@ -112,10 +111,10 @@ pub fn cluster_using_combined_pipeline(embeddings: Vec<Embedding>) -> Clusters {
                     // calling dot many times?
                     embeddings.iter()
                         .map(|other_embedding| dot(embedding, other_embedding))
-                        .collect::<Vec<f32>>()
+                        .collect()
                 )
             )
-            .collect::<Vec<(usize,Vec<usize>)>>();
+            .collect();
 
         communities.par_sort_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
 
