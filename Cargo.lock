@@ -253,6 +253,7 @@ dependencies = [
  "chrono",
  "clap",
  "dhat",
+ "ndarray",
  "rayon",
  "rust-bert",
  "serde",
