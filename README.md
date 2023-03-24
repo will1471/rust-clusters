@@ -77,8 +77,8 @@ Manged to write a faster N^2 version using ndarray, and some optimizations in th
 $ cargo run --release -- cluster-stages 10k.json /dev/null | grep "Finished main_cluster"
 2023-03-24 21:03:59.770409 +00:00 Finished main_cluster, took: PT11.427306S
 
-$ cargo run --release -- cluster-ndarray 10k.json /dev/null | grep "Finished main_cluster"
-2023-03-24 21:04:09.301223100 +00:00 Finished main_cluster, took: PT1.179119700S
+$ cargo run --release -- cluster-ndarray 10k.json /dev/null 2>&1 | grep "Finished main"
+2023-03-24 21:37:40.618573300 +00:00 Finished main_cluster, took: PT0.592992S
 ```
 
 Memory usage of faster one higher because it copies the data into a matrix.
