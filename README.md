@@ -92,3 +92,6 @@ dhat: At t-gmax: 441,886,465 bytes in 10,027 blocks
 ```
 
 Todo, make the low memory version this fast...
+
+I've just realised, rust-bert package is actually bringing in binding for torch (https://docs.rs/crate/tch/latest),
+so I should have access to all the functions we're using to make the python version fast.
