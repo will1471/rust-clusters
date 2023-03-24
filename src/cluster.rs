@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use rayon::prelude::*;
 
 use crate::time_it;
-use crate::timer::Timer;
 
 type Clusters = Vec<(usize, Vec<usize>)>;
 type Embedding = Vec<f32>;

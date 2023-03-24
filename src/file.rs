@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use crate::time_it;
-use crate::timer::Timer;
 
 pub fn load_text(filename: &str) -> (Vec<Vec<f32>>, Vec<String>) {
     use rust_bert::pipelines::sentence_embeddings::builder::SentenceEmbeddingsBuilder;

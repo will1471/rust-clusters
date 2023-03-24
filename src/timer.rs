@@ -38,7 +38,7 @@ impl Timer {
 #[macro_export]
 macro_rules! time_it {
     ($context:literal, $($tt:tt)+) => {
-        let timer = Timer::start($context);
+        let timer = crate::timer::Timer::start($context);
         $(
             $tt
         )+

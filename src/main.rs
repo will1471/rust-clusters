@@ -62,7 +62,10 @@ fn main() {
 
             let embeddings = file::load_vectors_from_json(input);
             let embeddings = cluster::normalize_all(embeddings);
-            let clusters = cluster::cluster_using_discrete_stages(embeddings);
+            time_it!(
+                "main_cluster",
+                let clusters = cluster::cluster_using_discrete_stages(embeddings);
+            );
             file::dump_as_json(output, &clusters);
         }
 
@@ -72,7 +75,10 @@ fn main() {
 
             let embeddings = file::load_vectors_from_json(input);
             let embeddings = cluster::normalize_all(embeddings);
-            let clusters = cluster::cluster_using_combined_pipeline(embeddings);
+            time_it!(
+                "main_cluster",
+                let clusters = cluster::cluster_using_combined_pipeline(embeddings);
+            );
             file::dump_as_json(output, &clusters);
         }
 
