@@ -43,8 +43,8 @@ where
 pub fn load_vectors_from_json(filename: &str) -> Vec<Vec<f32>> {
     time_it!(
         "reading vectors from json",
-        let file = File::open(filename).unwrap();
-        let embeddings = serde_json::from_reader(&file).expect("failed to parse json");
+        let buffered_reader = BufReader::new(File::open(filename).unwrap());
+        let embeddings = serde_json::from_reader(buffered_reader).expect("failed to parse json");
     );
     embeddings
 }
