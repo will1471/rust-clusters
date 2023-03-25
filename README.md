@@ -1,3 +1,23 @@
+# Memory Usage
+
+```
+$ bash memory-usage.sh
+cluster-ndarray  - 1k vectors = 8.297439 megabytes
+cluster-ndarray  - 5k vectors = 121.57206 megabytes
+cluster-ndarray  - 10k vectors = 441.95498 megabytes
+cluster-ndarray  - 20k vectors = 1.6827208 gigabytes
+cluster-ndarray  - 30k vectors = 3.6983211 gigabytes
+cluster-ndarray  - 40k vectors = 6.565422 gigabytes
+cluster-ndarray2 - 1k vectors = 3.91296 megabytes
+cluster-ndarray2 - 5k vectors = 21.897984 megabytes
+cluster-ndarray2 - 10k vectors = 43.789442 megabytes
+cluster-ndarray2 - 20k vectors = 87.572354 megabytes
+cluster-ndarray2 - 30k vectors = 118.77235 megabytes
+cluster-ndarray2 - 40k vectors = 175.13818 megabytes
+```
+
+# Initial Versions
+
 Convert a file of newline seperated documents into vectors.
 
 ```
