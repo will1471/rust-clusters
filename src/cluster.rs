@@ -15,34 +15,6 @@ type Community = (Index, Vec<Index>);
 const MIN_CLUSTER_SIZE: usize = 5;
 const MIN_SIMILARITY: f32 = 0.70;
 
-fn dot(a: &Vec<f32>, b: &Vec<f32>) -> f32 {
-    assert_eq!(a.len(), b.len());
-    a.iter().zip(b.iter()).map(|(a, b)| a * b).sum()
-}
-
-fn communities(scores: Scores) -> Clusters {
-    let mut communities: Clusters = Vec::new();
-
-    for (i, v) in scores.into_iter().enumerate() {
-        let mut sorted: Vec<(usize, f32)> = v.into_iter().enumerate().collect();
-
-        sorted.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap());
-
-        if sorted[MIN_CLUSTER_SIZE - 1].1 > MIN_SIMILARITY {
-            communities.push((
-                i,
-                sorted
-                    .into_iter()
-                    .take_while(|(_, v)| v > &MIN_SIMILARITY)
-                    .map(|(i, _)| i)
-                    .collect(),
-            ));
-        }
-    }
-    communities.par_sort_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
-    communities
-}
-
 fn unique_clusters(communities: &Clusters) -> Clusters {
     let mut found: Clusters = Vec::new();
     let mut seen: HashSet<Index> = HashSet::new();
@@ -54,75 +26,6 @@ fn unique_clusters(communities: &Clusters) -> Clusters {
         }
     }
 
-    found
-}
-
-pub fn cluster_using_discrete_stages(embeddings: Vec<Embedding>) -> Clusters {
-    time_it!(
-    "scores",
-    let scores: Vec<Vec<Score>> = embeddings
-        .par_iter()
-        .map(|v1| embeddings.iter().map(|v2| dot(v1, v2)).collect())
-        .collect();
-    );
-
-    time_it!(
-        "communities",
-        let communities = communities(scores);
-    );
-
-    time_it!(
-        "unique",
-        let found = unique_clusters(&communities);
-    );
-
-    found
-}
-
-pub fn cluster_using_combined_pipeline(embeddings: Vec<Embedding>) -> Clusters {
-    fn scores_to_community(i: Index, scores: Vec<Score>) -> Option<Community> {
-        let mut sorted: Vec<(Index, Score)> = scores.into_iter().enumerate().collect();
-
-        sorted.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap());
-
-        if sorted[MIN_CLUSTER_SIZE - 1].1 > MIN_SIMILARITY {
-            Some((
-                i,
-                sorted
-                    .into_iter()
-                    .take_while(|(_, v)| v > &MIN_SIMILARITY)
-                    .map(|(i, _)| i)
-                    .collect(),
-            ))
-        } else {
-            None
-        }
-    }
-
-    time_it!("comb",
-        let mut communities:Vec<Community> = embeddings
-            .par_iter()
-            .enumerate()
-            .filter_map(
-                |(idx, embedding)| scores_to_community(
-                    idx,
-                    // this is basically a matrix multiply with one embedding * other embeddings,
-                    // would it be more efficient to have a matrix multiply function instead of
-                    // calling dot many times?
-                    embeddings.iter()
-                        .map(|other_embedding| dot(embedding, other_embedding))
-                        .collect()
-                )
-            )
-            .collect();
-
-        communities.par_sort_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
-
-        time_it!(
-            "unique",
-            let found = unique_clusters(&communities);
-        );
-    );
     found
 }
 
@@ -216,6 +119,45 @@ pub fn cluster_using_ndarray_low_memory(embeddings: Vec<Embedding>) -> Clusters 
         .collect();
 
     // sort by community size
+    c.sort_unstable_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
+
+    unique_clusters(&c)
+}
+
+pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
+    // convert list<list<float>> into 2d matrix
+    let embeddings = Array::from_shape_vec(
+        (embeddings.len(), embeddings[0].len()),
+        embeddings.clone().into_iter().flatten().collect(),
+    ).expect("to get dimension correct");
+
+    let embeddings_transposed = embeddings.t().clone();
+
+    let mut c: Vec<Community> = vec![];
+    let mut i = 0;
+
+    for scores in embeddings
+        .axis_chunks_iter(Axis(0), 1000)
+        .map(|chunk|chunk.dot(&embeddings_transposed)) {
+
+        for row in scores.rows() {
+            let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
+            if count > MIN_CLUSTER_SIZE {
+                c.push(
+                    (
+                        i,
+                        row.indexed_iter()
+                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
+                            .collect()
+                    )
+                )
+            }
+            i = i + 1;
+        }
+        drop(scores);
+
+    }
+
     c.sort_unstable_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
 
     unique_clusters(&c)
