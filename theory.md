@@ -62,7 +62,7 @@ upto 10,000 items.
 
 We don't need the entire 10,000 x 10,000 matrix at the same time. We consume it row by row once.
 
-Instead of allocating 10,000 x 10,000 matrix, we could allocate a 1 x 10,000 matrix.
+Instead of allocating 10,000 x 10,000 matrix, we could allocate a 1 x 10,000 matrix, (10,000 times.)
 
 ## Observation 2
 
