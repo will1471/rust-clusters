@@ -36,6 +36,12 @@ fn cli() -> Command {
                 .arg(arg!(<VECTOR_FILE> "input file"))
                 .arg(arg!(<CLUSTER_FILE> "outfile file")),
         )
+        .subcommand(
+            Command::new("cluster-ndarray2")
+                .about("Read a file of vectors, dump a file of clusters\nUses low memory, optimized")
+                .arg(arg!(<VECTOR_FILE> "input file"))
+                .arg(arg!(<CLUSTER_FILE> "outfile file")),
+        )
 }
 
 macro_rules! get_arg {
@@ -97,6 +103,19 @@ fn main() {
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_ndarray(embeddings);
+            );
+            file::dump_as_json(output, &clusters);
+        }
+
+        Some(("cluster-ndarray2", submatch)) => {
+            let input = get_arg!(submatch, "VECTOR_FILE");
+            let output = get_arg!(submatch, "CLUSTER_FILE");
+
+            let embeddings = file::load_vectors_from_json(input);
+            let embeddings = cluster::normalize_all(embeddings);
+            time_it!(
+                "main_cluster",
+                let clusters = cluster::cluster_using_ndarray_low_memory(embeddings);
             );
             file::dump_as_json(output, &clusters);
         }

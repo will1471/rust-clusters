@@ -95,3 +95,54 @@ Todo, make the low memory version this fast...
 
 I've just realised, rust-bert package is actually bringing in binding for torch (https://docs.rs/crate/tch/latest),
 so I should have access to all the functions we're using to make the python version fast.
+
+## Matrix Library, Low Memory Impl.
+
+On 40k vectors, memory usage decreases from 6,261 MB to 167 MB.
+
+```
+$ cargo run --release --features dhat-heap -- cluster-ndarray 40k.json /dev/null 2>&1 | grep max
+dhat: At t-gmax: 6,565,421,969 bytes in 46,081 blocks
+
+$ cargo run --release --features dhat-heap -- cluster-ndarray2 40k.json /dev/null 2>&1 | grep max
+dhat: At t-gmax: 175,138,178 bytes in 47,258 blocks
+```
+
+On laptop, 40k vectors, runtime increases from 11.6 seconds to 50.5 seconds for low memory version.
+
+```
+$ cargo run --release -- cluster-ndarray2 40k.json /dev/null 2>&1 | grep "Finished main"
+2023-03-25 11:41:31.977950700 +00:00 Finished main_cluster, took: PT49.510539600S
+2023-03-25 11:42:26.482299100 +00:00 Finished main_cluster, took: PT50.112657900S
+2023-03-25 11:43:23.468459300 +00:00 Finished main_cluster, took: PT52.070877S
+
+$ cargo run --release -- cluster-ndarray 40k.json /dev/null 2>&1 | grep "Finished main"
+2023-03-25 11:43:43.504264700 +00:00 Finished main_cluster, took: PT12.809869900S
+2023-03-25 11:43:58.909638900 +00:00 Finished main_cluster, took: PT11.248993900S
+2023-03-25 11:44:14.163945300 +00:00 Finished main_cluster, took: PT11.035947500S
+```
+
+On laptop, 10k vectors, runtime increases from 0.59 seconds to 2.83 seconds for low memory version.
+
+```
+$ cargo run --release -- cluster-ndarray 10k.json /dev/null 2>&1 | grep "Finished main"
+2023-03-25 11:48:19.041532800 +00:00 Finished main_cluster, took: PT0.539656600S
+2023-03-25 11:48:21.863955600 +00:00 Finished main_cluster, took: PT0.668131600S
+2023-03-25 11:48:23.881252900 +00:00 Finished main_cluster, took: PT0.590317600S
+
+$ cargo run --release -- cluster-ndarray2 10k.json /dev/null 2>&1 | grep "Finished main"
+2023-03-25 11:48:31.916033200 +00:00 Finished main_cluster, took: PT2.888060900S
+2023-03-25 11:48:36.301082700 +00:00 Finished main_cluster, took: PT2.893791200S
+2023-03-25 11:48:47.696331900 +00:00 Finished main_cluster, took: PT2.964115500S
+```
+
+To reach these speeds, it's fully utilizing `11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz` in WSL2.
+
+I assume this overhead is from going from one large matrix multiply operation, to 10k or 40k smaller operations.
+
+Maybe the overhead can be reduced by allowing the program to MM several vectors at a time, increasing the memory usage,
+but by a tunable amount. (Letting us set a target memory usage.) Any server with enough compute to do the maths
+is going to have more than 167MB available to use...
+
+It's also possible that I'm doing something stupid in the memory efficient version, but I'm not experienced
+enough with rust / ndarray / rayon to know.

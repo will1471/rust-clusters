@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use rayon::prelude::*;
+use ndarray::prelude::*;
 
 use crate::time_it;
 
@@ -144,8 +145,6 @@ pub fn normalize_all(embeddings: Vec<Embedding>) -> Vec<Embedding> {
 /// It's back to using N^2 memory though, needs to have the pipeline added back...
 /// ndarray can probably do the normalization for us too...
 pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
-    use ndarray::prelude::*;
-
     let a = Array::from_shape_vec(
         (embeddings.len(), embeddings[0].len()),
         embeddings.clone().into_iter().flatten().collect(),
@@ -182,4 +181,42 @@ pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
     );
 
     found
+}
+
+
+pub fn cluster_using_ndarray_low_memory(embeddings: Vec<Embedding>) -> Clusters {
+    // convert list<list<float>> into 2d matrix
+    let embeddings = Array::from_shape_vec(
+        (embeddings.len(), embeddings[0].len()),
+        embeddings.clone().into_iter().flatten().collect(),
+    ).expect("to get dimension correct");
+
+    let embeddings_transposed = embeddings.t().clone();
+
+    let mut c: Vec<Community> = embeddings.axis_iter(Axis(0))
+        .into_par_iter()
+        .enumerate()
+        .flat_map(|(doc_index, embedding)| {
+            let scores = embedding.dot(&embeddings_transposed);
+            let count = scores.fold(0, |initial, score| if *score > MIN_SIMILARITY { initial + 1 } else { initial });
+            if count > MIN_CLUSTER_SIZE {
+                Some(
+                    (
+                        doc_index,
+                        // doc indexes with scores > MIN_SIMILARITY
+                        scores.indexed_iter()
+                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
+                            .collect()
+                    )
+                )
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // sort by community size
+    c.sort_unstable_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
+
+    unique_clusters(&c)
 }
