@@ -16,6 +16,26 @@ cluster-ndarray2 - 30k vectors = 118.77235 megabytes
 cluster-ndarray2 - 40k vectors = 175.13818 megabytes
 ```
 
+# Time
+
+```
+$ bash time.sh
+
+cluster-ndarray  -  1k =  0.006146 seconds avg 3 runs (0.006186200 0.005779600 0.006471300)
+cluster-ndarray  -  5k =  0.115    seconds avg 3 runs (0.109891100 0.106352200 0.128901200)
+cluster-ndarray  - 10k =  0.4568   seconds avg 3 runs (0.471051700 0.462445900 0.436903600)
+cluster-ndarray  - 20k =  2.074    seconds avg 3 runs (1.978195100 2.116270100 2.129029100)
+cluster-ndarray  - 30k =  5.085    seconds avg 3 runs (5.031557100 5.117108200 5.106502700)
+cluster-ndarray  - 40k =  9.251    seconds avg 3 runs (10.061635700 8.980553500 8.711575100)
+
+cluster-ndarray2 -  1k =  0.02414  seconds avg 3 runs (0.023307700 0.024878800 0.024247800)
+cluster-ndarray2 -  5k =  0.6683   seconds avg 3 runs (0.653129300 0.667661800 0.684142100)
+cluster-ndarray2 - 10k =  2.941    seconds avg 3 runs (3.055077500 2.917979100 2.849310)
+cluster-ndarray2 - 20k = 10.66     seconds avg 3 runs (10.638300700 10.662921800 10.666122900)
+cluster-ndarray2 - 30k = 24.81     seconds avg 3 runs (24.658328400 24.845688800 24.926793100)
+cluster-ndarray2 - 40k = 45.73     seconds avg 3 runs (45.301796600 45.664831200 46.219050900)
+```
+
 # Initial Versions
 
 Convert a file of newline seperated documents into vectors.
