@@ -2,53 +2,71 @@
 
 ```
 $ bash memory-usage.sh
-cluster-ndarray  - 1k vectors = 8.297439 megabytes
-cluster-ndarray  - 5k vectors = 121.57206 megabytes
-cluster-ndarray  - 10k vectors = 441.95498 megabytes
-cluster-ndarray  - 20k vectors = 1.6827208 gigabytes
-cluster-ndarray  - 30k vectors = 3.6983211 gigabytes
-cluster-ndarray  - 40k vectors = 6.565422 gigabytes
+cluster-ndarray  -  1k vectors =   8.297439  megabytes
+cluster-ndarray  -  5k vectors = 121.57206   megabytes
+cluster-ndarray  - 10k vectors = 441.95498   megabytes
+cluster-ndarray  - 20k vectors =   1.6827208 gigabytes
+cluster-ndarray  - 30k vectors =   3.6983211 gigabytes
+cluster-ndarray  - 40k vectors =   6.565422  gigabytes
 
-cluster-ndarray2 - 1k vectors = 3.91296 megabytes
-cluster-ndarray2 - 5k vectors = 21.897984 megabytes
-cluster-ndarray2 - 10k vectors = 43.789442 megabytes
-cluster-ndarray2 - 20k vectors = 87.572354 megabytes
-cluster-ndarray2 - 30k vectors = 118.77235 megabytes
-cluster-ndarray2 - 40k vectors = 175.13818 megabytes
+cluster-ndarray2 -  1k vectors =   3.91296  megabytes
+cluster-ndarray2 -  5k vectors =  21.897984 megabytes
+cluster-ndarray2 - 10k vectors =  43.789442 megabytes
+cluster-ndarray2 - 20k vectors =  87.572354 megabytes
+cluster-ndarray2 - 30k vectors = 118.77235  megabytes
+cluster-ndarray2 - 40k vectors = 175.13818  megabytes
 
-cluster-ndarray3 - 1k vectors = 8.29744 megabytes
-cluster-ndarray3 - 5k vectors = 41.597664 megabytes
-cluster-ndarray3 - 10k vectors = 82.085538 megabytes
-cluster-ndarray3 - 20k vectors = 163.16829 megabytes
-cluster-ndarray3 - 30k vectors = 219.37949 megabytes
-cluster-ndarray3 - 40k vectors = 326.40087 megabytes
+cluster-ndarray3 -  1k vectors =   8.29744  megabytes
+cluster-ndarray3 -  5k vectors =  41.597664 megabytes
+cluster-ndarray3 - 10k vectors =  82.085538 megabytes
+cluster-ndarray3 - 20k vectors = 163.16829  megabytes
+cluster-ndarray3 - 30k vectors = 219.37949  megabytes
+cluster-ndarray3 - 40k vectors = 326.40087  megabytes
+
+cluster-ndarray4 -  1k vectors =   8.29744  megabytes
+cluster-ndarray4 -  5k vectors =  41.574688 megabytes
+cluster-ndarray4 - 10k vectors =  81.96137  megabytes
+cluster-ndarray4 - 20k vectors = 162.73614  megabytes
+cluster-ndarray4 - 30k vectors = 218.34823  megabytes
+cluster-ndarray4 - 40k vectors = 324.28985  megabytes
 ```
 
 # Time
 
+Note some variance in run to run times is causing issues in average, need to run more and discard outliers. 
+
+Would help to not run on a laptop that will thermal throttle...
+
 ```
 $ bash time.sh
 
-cluster-ndarray  -  1k =  0.006146 seconds avg 3 runs (0.006186200 0.005779600 0.006471300)
-cluster-ndarray  -  5k =  0.115    seconds avg 3 runs (0.109891100 0.106352200 0.128901200)
-cluster-ndarray  - 10k =  0.4568   seconds avg 3 runs (0.471051700 0.462445900 0.436903600)
-cluster-ndarray  - 20k =  2.074    seconds avg 3 runs (1.978195100 2.116270100 2.129029100)
-cluster-ndarray  - 30k =  5.085    seconds avg 3 runs (5.031557100 5.117108200 5.106502700)
-cluster-ndarray  - 40k =  9.251    seconds avg 3 runs (10.061635700 8.980553500 8.711575100)
+cluster-ndarray -  1k = 0.006011 seconds avg 3 runs (0.005894800 0.006161600 0.005976900)
+cluster-ndarray -  5k = 0.15 seconds avg 3 runs (0.134679500 0.165467800 0.149927600)
+cluster-ndarray - 10k = 0.5458 seconds avg 3 runs (0.543352 0.590569100 0.503415)
+cluster-ndarray - 20k = 2.208 seconds avg 3 runs (2.321868800 2.101717500 2.201210700)
+cluster-ndarray - 30k = 5.113 seconds avg 3 runs (5.335912600 4.999812700 5.001968500)
+cluster-ndarray - 40k = 20.34 seconds avg 3 runs (39.668714800 10.328017100 11.031651200)
 
-cluster-ndarray2 -  1k =  0.02414  seconds avg 3 runs (0.023307700 0.024878800 0.024247800)
-cluster-ndarray2 -  5k =  0.6683   seconds avg 3 runs (0.653129300 0.667661800 0.684142100)
-cluster-ndarray2 - 10k =  2.941    seconds avg 3 runs (3.055077500 2.917979100 2.849310)
-cluster-ndarray2 - 20k = 10.66     seconds avg 3 runs (10.638300700 10.662921800 10.666122900)
-cluster-ndarray2 - 30k = 24.81     seconds avg 3 runs (24.658328400 24.845688800 24.926793100)
-cluster-ndarray2 - 40k = 45.73     seconds avg 3 runs (45.301796600 45.664831200 46.219050900)
+cluster-ndarray2 -  1k = 0.02729 seconds avg 3 runs (0.025344200 0.027940 0.028587900)
+cluster-ndarray2 -  5k = 0.7555 seconds avg 3 runs (0.765210600 0.682225800 0.819212900)
+cluster-ndarray2 - 10k = 3.217 seconds avg 3 runs (3.416109100 3.348304400 2.886095200)
+cluster-ndarray2 - 20k = 11.34 seconds avg 3 runs (11.753761600 11.200172800 11.077001700)
+cluster-ndarray2 - 30k = 25.39 seconds avg 3 runs (25.235181600 25.343407700 25.594127)
+cluster-ndarray2 - 40k = 45.78 seconds avg 3 runs (45.771240300 45.743821200 45.830221200)
 
-cluster-ndarray3 -  1k = 0.006763  seconds avg 3 runs (0.006555100 0.007503400 0.006230200)
-cluster-ndarray3 -  5k = 0.1092    seconds avg 3 runs (0.107013300 0.107218300 0.113346700)
-cluster-ndarray3 - 10k = 0.4391    seconds avg 3 runs (0.449009200 0.437610500 0.430601)
-cluster-ndarray3 - 20k = 1.86      seconds avg 3 runs (1.862618500 1.878791100 1.837911)
-cluster-ndarray3 - 30k = 4.275     seconds avg 3 runs (4.219159800 4.299801100 4.306989700)
-cluster-ndarray3 - 40k = 7.683     seconds avg 3 runs (7.750780400 7.655981 7.642433100)
+cluster-ndarray3 -  1k = 0.007323 seconds avg 3 runs (0.006140700 0.009674400 0.006154400)
+cluster-ndarray3 -  5k = 0.1163 seconds avg 3 runs (0.123985800 0.110045500 0.114841800)
+cluster-ndarray3 - 10k = 0.5039 seconds avg 3 runs (0.477560700 0.551024500 0.483139900)
+cluster-ndarray3 - 20k = 1.929 seconds avg 3 runs (1.890591500 1.912888800 1.983728800)
+cluster-ndarray3 - 30k = 6.181 seconds avg 3 runs (4.381790700 5.930157700 8.232483400)
+cluster-ndarray3 - 40k = 14.52 seconds avg 3 runs (14.572001300 14.717263100 14.283751200)
+
+cluster-ndarray4 -  1k = 0.01008 seconds avg 3 runs (0.009167 0.011955500 0.009110100)
+cluster-ndarray4 -  5k = 0.2302 seconds avg 3 runs (0.224306600 0.218231700 0.247920)
+cluster-ndarray4 - 10k = 0.8606 seconds avg 3 runs (0.765741800 0.940686 0.875295700)
+cluster-ndarray4 - 20k = 3.578 seconds avg 3 runs (3.622595700 3.518956800 3.592120100)
+cluster-ndarray4 - 30k = 8.027 seconds avg 3 runs (8.048342100 8.011991600 8.021660300)
+cluster-ndarray4 - 40k = 13.99 seconds avg 3 runs (14.470479200 14.477544700 13.016570700)
 ```
 
 ## Matrix Library (cluster-ndarray)
@@ -135,3 +153,17 @@ Implemented hybrid of one big MM, and lots of small MM, a few medium MM (1k vect
 
 Memory growth appears to be linear, appears to run faster than one large MM, not sure why... Maybe because it's easier
 to get access to smaller blocks of memory, blocks of memory can be reused?
+
+# Batched Matrix Multiplications, with periodic pruning of Communities (cluster-ndarray4)
+
+In the pathological case, (all vectors equal or very close,) the size of collected communities can grow to 
+~ `num_docs^2 * 8byte`.
+
+This impl. prunes the collected communities after each matrix multiplication batch.
+
+This appears to have a significant impact on runtime, maybe it would be a useful protection when combined with a
+size check before pruning.
+
+I've not verified the communities grows in the way I expect, and if it does, that the puring works. To verify this
+running a memory usage check with a input dataset with equal vectors should show it.
+

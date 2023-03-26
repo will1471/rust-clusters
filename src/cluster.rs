@@ -52,7 +52,7 @@ pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
         (embeddings.len(), embeddings[0].len()),
         embeddings.clone().into_iter().flatten().collect(),
     )
-    .expect("to get dimension correct");
+        .expect("to get dimension correct");
 
     time_it!("mm",
         let b = a.dot(&a.t());
@@ -138,8 +138,7 @@ pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
 
     for scores in embeddings
         .axis_chunks_iter(Axis(0), 1000)
-        .map(|chunk|chunk.dot(&embeddings_transposed)) {
-
+        .map(|chunk| chunk.dot(&embeddings_transposed)) {
         for row in scores.rows() {
             let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
             if count > MIN_CLUSTER_SIZE {
@@ -155,10 +154,51 @@ pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
             i = i + 1;
         }
         drop(scores);
-
     }
 
     c.sort_unstable_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
 
     unique_clusters(&c)
+}
+
+
+pub fn cluster_using_ndarray_batched_unique_on_the_go(embeddings: Vec<Embedding>) -> Clusters {
+    // convert list<list<float>> into 2d matrix
+    let doc_count = embeddings.len();
+    let embeddings = Array::from_shape_vec(
+        (doc_count, embeddings[0].len()),
+        embeddings.clone().into_iter().flatten().collect(),
+    ).expect("to get dimension correct");
+
+    let embeddings_transposed = embeddings.t().clone();
+
+    let mut c: Vec<Community> = vec![];
+    let mut i = 0;
+
+    for scores in embeddings
+        .axis_chunks_iter(Axis(0), 1000)
+        .map(|chunk| chunk.dot(&embeddings_transposed)) {
+        for row in scores.rows() {
+            let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
+            if count > MIN_CLUSTER_SIZE {
+                c.push(
+                    (
+                        i,
+                        row.indexed_iter()
+                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
+                            .collect()
+                    )
+                )
+            }
+            i = i + 1;
+        }
+
+        drop(scores);
+
+        c.sort_unstable_by(|(_, a), (_, b)| b.len().cmp(&a.len()));
+
+        c = unique_clusters(&c);
+    }
+
+    c
 }
