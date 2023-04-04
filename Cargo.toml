@@ -14,6 +14,7 @@ clap = "4.1.11"       # Command Line Argument Parser
 ndarray = { version = "0.15.6", features = ["matrixmultiply-threading", "rayon"] }
 regex = "1.7.3"
 lazy_static = "1.4.0"
+bhtsne = "0.5.2"
 
 [profile.release]
 debug = true          # debug symbols in release build, for heap profile

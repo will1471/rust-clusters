@@ -9,6 +9,7 @@ mod cluster;
 mod file;
 mod phatic;
 mod timer;
+mod tsne;
 
 fn cli() -> Command {
     Command::new("cluster")
@@ -50,6 +51,12 @@ fn cli() -> Command {
                 .about("Read a file of vectors, dump a file of clusters\nUses low memory, unique otg")
                 .arg(arg!(<VECTOR_FILE> "input file"))
                 .arg(arg!(<CLUSTER_FILE> "outfile file")),
+        )
+        .subcommand(
+            Command::new("tsne")
+                .about("Do a clustering, and use tsne to reduce dimensions")
+                .arg(arg!(<VECTOR_FILE> "input file"))
+                .arg(arg!(<TSNE_FILE> "output file"))
         )
 }
 
@@ -164,6 +171,28 @@ fn main() {
                 let clusters = cluster::cluster_using_ndarray_batched_unique_on_the_go(embeddings);
             );
             file::dump_as_json(output, &clusters);
+        }
+
+        Some(("tsne", submatch)) => {
+            let input = get_arg!(submatch, "VECTOR_FILE");
+            let output = get_arg!(submatch, "TSNE_FILE");
+
+            let embeddings = file::load_vectors_from_json(input);
+            let embeddings = cluster::normalize_all(embeddings);
+
+            let embeddings_copy = embeddings.clone();
+
+            time_it!(
+                "cluster",
+                let clusters = cluster::cluster_using_ndarray_batched(embeddings_copy);
+            );
+
+            let embeddings = cluster::vectors_to_array(embeddings);
+            time_it!(
+                "tsne",
+                let reduced = tsne::reduce_dimensions(&clusters, &embeddings);
+            );
+            file::dump_as_json(output, &reduced);
         }
 
         _ => unreachable!(),

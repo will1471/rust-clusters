@@ -7,7 +7,7 @@ use crate::time_it;
 
 type Embedding = Vec<f32>;
 type Index = usize;
-type Clusters = Vec<(Index, Vec<Index>)>;
+pub type Clusters = Vec<(Index, Vec<Index>)>;
 type Community = (Index, Vec<Index>);
 
 const MIN_CLUSTER_SIZE: usize = 5;
@@ -51,16 +51,20 @@ fn idx_over_threshold(row: &ArrayView1<f32>) -> Vec<usize> {
         .collect()
 }
 
+pub fn vectors_to_array(embeddings: Vec<Embedding>) -> Array2<f32> {
+    let embeddings = Array2::from_shape_vec(
+        (embeddings.len(), embeddings[0].len()),
+        embeddings.into_iter().flatten().collect(),
+    ).expect("to get dimension correct");
+    embeddings
+}
+
 /// This version uses ndarray for faster matrix multiplication
 /// Also optimized the communities stage, python version doesnt actually sort the members in the community
 /// It's back to using N^2 memory though, needs to have the pipeline added back...
 /// ndarray can probably do the normalization for us too...
 pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
-    let a = Array::from_shape_vec(
-        (embeddings.len(), embeddings[0].len()),
-        embeddings.clone().into_iter().flatten().collect(),
-    )
-        .expect("to get dimension correct");
+    let a = vectors_to_array(embeddings);
 
     time_it!("mm",
         let b = a.dot(&a.t());
@@ -88,11 +92,7 @@ pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
 
 pub fn cluster_using_ndarray_low_memory(embeddings: Vec<Embedding>) -> Clusters {
     // convert list<list<float>> into 2d matrix
-    let embeddings = Array::from_shape_vec(
-        (embeddings.len(), embeddings[0].len()),
-        embeddings.clone().into_iter().flatten().collect(),
-    ).expect("to get dimension correct");
-
+    let embeddings = vectors_to_array(embeddings);
     let embeddings_transposed = embeddings.t().clone();
 
     let mut c: Vec<Community> = embeddings.axis_iter(Axis(0))
@@ -116,10 +116,7 @@ pub fn cluster_using_ndarray_low_memory(embeddings: Vec<Embedding>) -> Clusters 
 
 pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
     // convert list<list<float>> into 2d matrix
-    let embeddings = Array::from_shape_vec(
-        (embeddings.len(), embeddings[0].len()),
-        embeddings.clone().into_iter().flatten().collect(),
-    ).expect("to get dimension correct");
+    let embeddings = vectors_to_array(embeddings);
 
     let embeddings_transposed = embeddings.t().clone();
 
@@ -145,12 +142,7 @@ pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
 
 pub fn cluster_using_ndarray_batched_unique_on_the_go(embeddings: Vec<Embedding>) -> Clusters {
     // convert list<list<float>> into 2d matrix
-    let doc_count = embeddings.len();
-    let embeddings = Array::from_shape_vec(
-        (doc_count, embeddings[0].len()),
-        embeddings.clone().into_iter().flatten().collect(),
-    ).expect("to get dimension correct");
-
+    let embeddings = vectors_to_array(embeddings);
     let embeddings_transposed = embeddings.t().clone();
 
     let mut c: Vec<Community> = vec![];
