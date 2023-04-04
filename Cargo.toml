@@ -12,6 +12,7 @@ serde_json = "1.0.94" # json serialization
 rayon = "1.7.0"       # parallel iterators
 clap = "4.1.11"       # Command Line Argument Parser
 ndarray = { version = "0.15.6", features = ["matrixmultiply-threading", "rayon"] }
+regex = "1.7.3"
 
 [profile.release]
 debug = true          # debug symbols in release build, for heap profile

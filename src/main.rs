@@ -7,6 +7,7 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 mod cluster;
 mod file;
 mod timer;
+mod phatic;
 
 fn cli() -> Command {
     Command::new("cluster")
