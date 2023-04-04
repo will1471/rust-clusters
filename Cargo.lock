@@ -253,6 +253,7 @@ dependencies = [
  "chrono",
  "clap",
  "dhat",
+ "lazy_static",
  "ndarray",
  "rayon",
  "regex",

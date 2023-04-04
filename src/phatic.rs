@@ -1,18 +1,25 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::error::Error;
+use ndarray::prelude::*;
 
-use rust_bert::pipelines::sentence_embeddings::builder::SentenceEmbeddingsBuilder;
-use rust_bert::pipelines::sentence_embeddings::{Embedding, SentenceEmbeddingsModel, SentenceEmbeddingsModelType};
+use rust_bert::pipelines::sentence_embeddings::{
+    Embedding,
+    SentenceEmbeddingsModel,
+    SentenceEmbeddingsModelType,
+    builder::SentenceEmbeddingsBuilder,
+};
 
-struct PhaticDetector {
+pub struct PhaticDetector {
     model: SentenceEmbeddingsModel,
-    embeddings: Vec<Embedding>,
+    embeddings: Array<f32, Ix2>,
+    similarity: f32,
 }
 
 static EXAMPLES: &'static str = include_str!("phatic_examples.txt");
 
 impl PhaticDetector {
-    pub fn new() -> Result<PhaticDetector, Box<dyn Error>> {
+    pub fn new(similarity: f32) -> Result<PhaticDetector, Box<dyn Error>> {
         let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
             .create_model()?;
 
@@ -21,41 +28,48 @@ impl PhaticDetector {
             embeddings.extend(model.encode(&[line])?);
         }
         embeddings = normalize_all(embeddings);
-        Ok(PhaticDetector { model, embeddings })
+
+        let embeddings = Array::from_shape_vec(
+            (embeddings.len(), embeddings[0].len()),
+            embeddings.into_iter().flatten().collect(),
+        )?.reversed_axes();
+
+        Ok(PhaticDetector { model, embeddings, similarity })
     }
 
-    pub fn is_phatic(&self, text: &str) -> Result<bool, Box<dyn Error>> {
+    pub fn is_phatic(&self, text: &str, embedding: &Option<&Embedding>) -> Result<bool, Box<dyn Error>> {
         match sanitise_text(text).split(char::is_whitespace).count() {
             0..=3 => Ok(true),
             15.. => Ok(false),
-            _ => vector_check(&text, self)
+            _ => vector_check(&text, embedding, self)
         }
     }
+}
+
+fn norm(a: &[f32]) -> Embedding {
+    let z = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    a.iter().map(|x| x / z).collect()
 }
 
 fn normalize_all(embeddings: Vec<Embedding>) -> Vec<Embedding> {
-    fn norm(a: &[f32]) -> Embedding {
-        let z = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-        a.iter().map(|x| x / z).collect()
-    }
     embeddings.iter().map(|v| norm(v)).collect()
 }
 
-fn dot(a: &Embedding, b: &Embedding) -> f32 {
-    assert_eq!(a.len(), b.len());
-    a.iter().zip(b.iter()).map(|(a, b)| a * b).sum()
-}
-
-fn vector_check(text: &str, p: &PhaticDetector) -> Result<bool, Box<dyn Error>>
+fn vector_check(text: &str, embedding: &Option<&Embedding>, p: &PhaticDetector) -> Result<bool, Box<dyn Error>>
 {
-    let v = p.model.encode(&[text])?;
-    let v = normalize_all(v);
-    for e in &p.embeddings {
-        if dot(&v[0], e) > 0.5 {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    let mut e: Vec<Embedding>;
+
+    let embedding = if embedding.is_some() {
+        embedding.unwrap()
+    } else {
+        e = normalize_all(p.model.encode(&[text])?);
+        &e[0]
+    };
+
+    let v = Array::from_shape_vec((1, embedding.len()), embedding.clone().into_iter().collect())?;
+    let scores = v.dot(&p.embeddings);
+    let count = scores.fold(0, |i, v| if *v > p.similarity { i + 1 } else { i });
+    return Ok(count > 0);
 }
 
 fn sanitise_text(text: &str) -> String {
@@ -67,8 +81,11 @@ fn sanitise_text(text: &str) -> String {
 }
 
 fn clean_spaces(text: &str) -> String {
-    let r = Regex::new(r" +").expect("To have valid regex"); // @todo should this be reused?
-    r.replace_all(text, " ").trim().to_owned()
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r" +")
+            .expect("To have valid regex");
+    }
+    RE.replace_all(text, " ").trim().to_owned()
 }
 
 // fn remove_new_lines(text: &str) -> String {
@@ -76,15 +93,20 @@ fn clean_spaces(text: &str) -> String {
 // }
 
 fn remove_user_mentions(text: &str) -> String {
-    let r = Regex::new(r"@[A-Za-z0-9]+").expect("To have valid regex"); // @todo should this be reused?
-    clean_spaces(r.replace_all(text, "").as_ref())
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"@[A-Za-z0-9]+")
+            .expect("To have valid regex");
+    }
+    clean_spaces(RE.replace_all(text, "").as_ref())
 }
 
 fn remove_emoticons(text: &str) -> String {
-    // @todo this has significant changes... better test suite?
-    let r = Regex::new(r"(:\w+:|<[/\\]?3|[\(\)\\\D|\*\$][\-\^]?[:;=]|[:;=B8][\-\^]?[3DOPp@\$\*\\\)\(/|])(\s|[!\.\?]|$)")
-        .expect("To have valid regex"); // @todo should this be reused?
-    clean_spaces(r.replace_all(text, "").as_ref())
+    lazy_static! {
+        static ref RE: Regex = Regex::new(
+            r"(:\w+:|<[/\\]?3|[\(\)\\\D|\*\$][\-\^]?[:;=]|[:;=B8][\-\^]?[3DOPp@\$\*\\\)\(/|])(\s|[!\.\?]|$)"
+        ).expect("To have valid regex");
+    }
+    clean_spaces(RE.replace_all(text, "").as_ref())
 }
 
 // fn remove_emoji(text: &str) -> String {
@@ -130,11 +152,11 @@ mod tests {
 
     #[test]
     fn test_it_can_detect_phatic_sentences() {
-        let p = PhaticDetector::new().expect("To build detector instance");
-        assert_eq!(true, p.is_phatic("hello").unwrap());
-        assert_eq!(false, p.is_phatic("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.").unwrap());
-        assert_eq!(true, p.is_phatic("thanks for the help sally").unwrap());
-        assert_eq!(true, p.is_phatic("Hello, how can I help you?").unwrap());
-        assert_eq!(false, p.is_phatic("I can't login to my account.").unwrap());
+        let p = PhaticDetector::new(0.5).expect("To build detector instance");
+        assert_eq!(true, p.is_phatic("hello", &None).unwrap());
+        assert_eq!(false, p.is_phatic("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", &None).unwrap());
+        assert_eq!(true, p.is_phatic("thanks for the help sally", &None).unwrap());
+        assert_eq!(true, p.is_phatic("Hello, how can I help you?", &None).unwrap());
+        assert_eq!(false, p.is_phatic("I can't login to my account.", &None).unwrap());
     }
 }
