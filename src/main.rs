@@ -1,5 +1,5 @@
 use clap::{arg, Command};
-use crate::phatic::PhaticDetector;
+use crate::phatic::PhaticDetectorBuilder;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -89,12 +89,13 @@ fn main() {
                 panic!("Similarity too low");
             }
 
-            let pre_vec = submatch.get_one::<bool>("prevector");
+            let p = PhaticDetectorBuilder::new()
+                .with_similarity_threshold(similarity)
+                .build()
+                .expect("Expect to construct phatic detector");
 
-            let p = PhaticDetector::new(similarity).expect("Expect to construct phatic detector");
-
-            let mut container;
-            let v = match pre_vec {
+            let container;
+            let v = match submatch.get_one::<bool>("prevector") {
                 Some(true) => {
                     use rust_bert::pipelines::sentence_embeddings::builder::SentenceEmbeddingsBuilder;
                     use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModelType;
