@@ -6,9 +6,7 @@ use ndarray::prelude::*;
 use crate::time_it;
 
 type Embedding = Vec<f32>;
-type Scores = Vec<Vec<f32>>;
 type Index = usize;
-type Score = f32;
 type Clusters = Vec<(Index, Vec<Index>)>;
 type Community = (Index, Vec<Index>);
 
@@ -43,6 +41,16 @@ pub fn normalize_all(embeddings: Vec<Embedding>) -> Vec<Embedding> {
     embeddings
 }
 
+fn count_scores_over_threshold(row: &ArrayView1<f32>) -> usize {
+    row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i })
+}
+
+fn idx_over_threshold(row: &ArrayView1<f32>) -> Vec<usize> {
+    row.indexed_iter()
+        .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
+        .collect()
+}
+
 /// This version uses ndarray for faster matrix multiplication
 /// Also optimized the communities stage, python version doesnt actually sort the members in the community
 /// It's back to using N^2 memory though, needs to have the pipeline added back...
@@ -62,16 +70,8 @@ pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
         let mut c: Vec<Community> = vec![];
         let mut i = 0;
         for row in b.rows() {
-            let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
-            if count > MIN_CLUSTER_SIZE {
-                c.push(
-                    (
-                        i,
-                        row.indexed_iter()
-                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
-                            .collect()
-                    )
-                )
+            if count_scores_over_threshold(&row) > MIN_CLUSTER_SIZE {
+                c.push((i, idx_over_threshold(&row)));
             }
             i = i + 1;
         }
@@ -85,7 +85,6 @@ pub fn cluster_using_ndarray(embeddings: Vec<Embedding>) -> Clusters {
 
     found
 }
-
 
 pub fn cluster_using_ndarray_low_memory(embeddings: Vec<Embedding>) -> Clusters {
     // convert list<list<float>> into 2d matrix
@@ -101,17 +100,8 @@ pub fn cluster_using_ndarray_low_memory(embeddings: Vec<Embedding>) -> Clusters 
         .enumerate()
         .flat_map(|(doc_index, embedding)| {
             let scores = embedding.dot(&embeddings_transposed);
-            let count = scores.fold(0, |initial, score| if *score > MIN_SIMILARITY { initial + 1 } else { initial });
-            if count > MIN_CLUSTER_SIZE {
-                Some(
-                    (
-                        doc_index,
-                        // doc indexes with scores > MIN_SIMILARITY
-                        scores.indexed_iter()
-                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
-                            .collect()
-                    )
-                )
+            if count_scores_over_threshold(&scores.view()) > MIN_CLUSTER_SIZE {
+                Some((doc_index, idx_over_threshold(&scores.view())))
             } else {
                 None
             }
@@ -140,16 +130,8 @@ pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
         .axis_chunks_iter(Axis(0), 1000)
         .map(|chunk| chunk.dot(&embeddings_transposed)) {
         for row in scores.rows() {
-            let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
-            if count > MIN_CLUSTER_SIZE {
-                c.push(
-                    (
-                        i,
-                        row.indexed_iter()
-                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
-                            .collect()
-                    )
-                )
+            if count_scores_over_threshold(&row) > MIN_CLUSTER_SIZE {
+                c.push((i, idx_over_threshold(&row)));
             }
             i = i + 1;
         }
@@ -160,7 +142,6 @@ pub fn cluster_using_ndarray_batched(embeddings: Vec<Embedding>) -> Clusters {
 
     unique_clusters(&c)
 }
-
 
 pub fn cluster_using_ndarray_batched_unique_on_the_go(embeddings: Vec<Embedding>) -> Clusters {
     // convert list<list<float>> into 2d matrix
@@ -179,16 +160,8 @@ pub fn cluster_using_ndarray_batched_unique_on_the_go(embeddings: Vec<Embedding>
         .axis_chunks_iter(Axis(0), 1000)
         .map(|chunk| chunk.dot(&embeddings_transposed)) {
         for row in scores.rows() {
-            let count = row.fold(0, |i, v| if *v > MIN_SIMILARITY { i + 1 } else { i });
-            if count > MIN_CLUSTER_SIZE {
-                c.push(
-                    (
-                        i,
-                        row.indexed_iter()
-                            .filter_map(|(i, f)| if f > &MIN_SIMILARITY { Some(i) } else { None })
-                            .collect()
-                    )
-                )
+            if count_scores_over_threshold(&row) > MIN_CLUSTER_SIZE {
+                c.push((i, idx_over_threshold(&row)));
             }
             i = i + 1;
         }
@@ -201,4 +174,34 @@ pub fn cluster_using_ndarray_batched_unique_on_the_go(embeddings: Vec<Embedding>
     }
 
     c
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_it_can_count_scores_over_threshold() {
+        let a = array![1.0, 0.0, 0.1, 2.0, 0.2, 0.0, 0.0];
+        assert_eq!(2, count_scores_over_threshold(&a.view()));
+
+        let a = array![];
+        assert_eq!(0, count_scores_over_threshold(&a.view()));
+
+        let a = array![0.0, 0.0, 0.1];
+        assert_eq!(0, count_scores_over_threshold(&a.view()));
+    }
+
+    #[test]
+    fn test_it_can_collect_idx_over_threshold() {
+        let a = array![];
+        assert_eq!(Vec::<usize>::new(), idx_over_threshold(&a.view()));
+
+        let a = array![0.0, 0.0, 0.1];
+        assert_eq!(Vec::<usize>::new(), idx_over_threshold(&a.view()));
+
+        let a = array![1.0, 0.0, 0.1, 2.0, 0.2, 0.0, 0.0];
+        assert_eq!(vec![0 as usize, 3 as usize], idx_over_threshold(&a.view()));
+    }
 }
