@@ -126,7 +126,7 @@ fn main() {
             let output = get_arg!(submatch, "CLUSTER_FILE");
 
             let embeddings = file::load_vectors_from_json(input);
-            let embeddings = cluster::normalize_all(embeddings);
+            let embeddings = cluster::normalize_all_inplace(embeddings);
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_ndarray(embeddings);
@@ -139,7 +139,7 @@ fn main() {
             let output = get_arg!(submatch, "CLUSTER_FILE");
 
             let embeddings = file::load_vectors_from_json(input);
-            let embeddings = cluster::normalize_all(embeddings);
+            let embeddings = cluster::normalize_all_inplace(embeddings);
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_ndarray_low_memory(embeddings);
@@ -152,7 +152,7 @@ fn main() {
             let output = get_arg!(submatch, "CLUSTER_FILE");
 
             let embeddings = file::load_vectors_from_json(input);
-            let embeddings = cluster::normalize_all(embeddings);
+            let embeddings = cluster::normalize_all_inplace(embeddings);
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_ndarray_batched(embeddings);
@@ -165,7 +165,7 @@ fn main() {
             let output = get_arg!(submatch, "CLUSTER_FILE");
 
             let embeddings = file::load_vectors_from_json(input);
-            let embeddings = cluster::normalize_all(embeddings);
+            let embeddings = cluster::normalize_all_inplace(embeddings);
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_ndarray_batched_unique_on_the_go(embeddings);
@@ -178,7 +178,7 @@ fn main() {
             let output = get_arg!(submatch, "TSNE_FILE");
 
             let embeddings = file::load_vectors_from_json(input);
-            let embeddings = cluster::normalize_all(embeddings);
+            let embeddings = cluster::normalize_all_inplace(embeddings);
 
             let embeddings_copy = embeddings.clone();
 

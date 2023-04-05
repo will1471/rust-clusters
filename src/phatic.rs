@@ -25,7 +25,7 @@ impl PhaticDetector {
         let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2).create_model()?;
 
         let embeddings = EXAMPLES.lines().map(|s| model.encode(&[s]).unwrap()).flatten().collect(); // @todo panic!
-        let embeddings = cluster::normalize_all(embeddings);
+        let embeddings = cluster::normalize_all_inplace(embeddings);
         let embeddings = cluster::vectors_to_array(embeddings);
         let embeddings = embeddings.reversed_axes();
 
@@ -64,11 +64,12 @@ impl PhaticDetectorBuilder {
 fn vector_check(text: &str, embedding: &Option<&Embedding>, p: &PhaticDetector) -> Result<bool, Box<dyn Error>>
 {
     let embedding_array = if embedding.is_some() {
-        Array::from_shape_vec((1, embedding.unwrap().len()), embedding.unwrap().clone())?
+        let embedding = embedding.unwrap();
+        Array::from_shape_vec((1, embedding.len()), embedding.clone())?
 
     } else {
         let embeddings = p.model.encode(&[text])?;
-        let mut embeddings = cluster::normalize_all(embeddings);
+        let mut embeddings = cluster::normalize_all_inplace(embeddings);
         let embedding = take(&mut embeddings[0]);
 
         Array::from_shape_vec((1, embedding.len()), embedding)?

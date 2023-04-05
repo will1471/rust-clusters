@@ -27,17 +27,16 @@ fn unique_clusters(communities: &Clusters) -> Clusters {
     found
 }
 
-pub fn normalize_all(embeddings: Vec<Embedding>) -> Vec<Embedding> {
-    fn norm(a: &[f32]) -> Vec<f32> {
+pub fn normalize_all_inplace(mut embeddings: Vec<Embedding>) -> Vec<Embedding> {
+    fn norm(a: &mut Embedding) {
         let z = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-        a.iter().map(|x| x / z).collect()
+        a.iter_mut().for_each(|x| *x = *x / z);
     }
 
     time_it!(
-        "norm",
-        let embeddings: Vec<Embedding> = embeddings.iter().map(|v|norm(v)).collect();
+        "norm inplace",
+        embeddings.iter_mut().for_each(|v|norm(v));
     );
-
     embeddings
 }
 
