@@ -195,4 +195,33 @@ mod tests {
         let a = array![1.0, 0.0, 0.1, 2.0, 0.2, 0.0, 0.0];
         assert_eq!(vec![0 as usize, 3 as usize], idx_over_threshold(&a.view()));
     }
+
+    #[test]
+    fn test_it_can_normalize_vectors() {
+        fn vec_f32_compare(a: &[f32], b: &[f32]) -> bool {
+            a.iter()
+                .zip(b)
+                .all(|(a, b)| (a - b).abs() < 0.0001)
+        }
+
+        let input = vec![
+            vec![0.4, 1.0, -0.3],
+            vec![0.2, 0.1, -0.1],
+        ];
+
+        let norm = normalize_all_inplace(input);
+
+        let expect = vec![
+            vec![0.3577708763, 0.8944271908, -0.2683281572],
+            vec![0.8164965809, 0.4082482904, -0.4082482904],
+        ];
+
+        assert!(vec_f32_compare(&expect[0], &norm[0]));
+        assert!(vec_f32_compare(&expect[1], &norm[1]));
+
+        let norm2 = normalize_all_inplace(norm);
+
+        assert!(vec_f32_compare(&expect[0], &norm2[0]));
+        assert!(vec_f32_compare(&expect[1], &norm2[1]));
+    }
 }
