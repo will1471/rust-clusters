@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::error::Error;
+use std::mem::take;
 use ndarray::prelude::*;
 
 use rust_bert::pipelines::sentence_embeddings::{
@@ -9,6 +10,7 @@ use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsModelType,
     builder::SentenceEmbeddingsBuilder,
 };
+use crate::cluster;
 
 pub struct PhaticDetector {
     model: SentenceEmbeddingsModel,
@@ -20,28 +22,22 @@ static EXAMPLES: &str = include_str!("phatic_examples.txt");
 
 impl PhaticDetector {
     fn new(similarity: f32) -> Result<PhaticDetector, Box<dyn Error>> {
-        let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
-            .create_model()?;
+        let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2).create_model()?;
 
-        let mut embeddings: Vec<Embedding> = vec![];
-        for line in EXAMPLES.lines() {
-            embeddings.extend(model.encode(&[line])?);
-        }
-        embeddings = normalize_all(embeddings);
-
-        let embeddings = Array::from_shape_vec(
-            (embeddings.len(), embeddings[0].len()),
-            embeddings.into_iter().flatten().collect(),
-        )?.reversed_axes();
+        let embeddings = EXAMPLES.lines().map(|s| model.encode(&[s]).unwrap()).flatten().collect(); // @todo panic!
+        let embeddings = cluster::normalize_all(embeddings);
+        let embeddings = cluster::vectors_to_array(embeddings);
+        let embeddings = embeddings.reversed_axes();
 
         Ok(PhaticDetector { model, embeddings, similarity })
     }
 
     pub fn is_phatic(&self, text: &str, embedding: &Option<&Embedding>) -> Result<bool, Box<dyn Error>> {
-        match sanitise_text(text).split(char::is_whitespace).count() {
+        let text = sanitise_text(text);
+        match text.split(char::is_whitespace).count() {
             0..=3 => Ok(true),
             15.. => Ok(false),
-            _ => vector_check(text, embedding, self)
+            _ => vector_check(&text, embedding, self)
         }
     }
 }
@@ -65,28 +61,20 @@ impl PhaticDetectorBuilder {
     }
 }
 
-
-fn norm(a: &[f32]) -> Embedding {
-    let z = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-    a.iter().map(|x| x / z).collect()
-}
-
-fn normalize_all(embeddings: Vec<Embedding>) -> Vec<Embedding> {
-    embeddings.iter().map(|v| norm(v)).collect()
-}
-
 fn vector_check(text: &str, embedding: &Option<&Embedding>, p: &PhaticDetector) -> Result<bool, Box<dyn Error>>
 {
-    let container: Vec<Embedding>;
-    let embedding = if embedding.is_some() {
-        embedding.unwrap()
+    let embedding_array = if embedding.is_some() {
+        Array::from_shape_vec((1, embedding.unwrap().len()), embedding.unwrap().clone())?
+
     } else {
-        container = normalize_all(p.model.encode(&[text])?);
-        &container[0]
+        let embeddings = p.model.encode(&[text])?;
+        let mut embeddings = cluster::normalize_all(embeddings);
+        let embedding = take(&mut embeddings[0]);
+
+        Array::from_shape_vec((1, embedding.len()), embedding)?
     };
 
-    let v = Array::from_shape_vec((1, embedding.len()), embedding.clone().into_iter().collect())?;
-    let scores = v.dot(&p.embeddings);
+    let scores = embedding_array.dot(&p.embeddings);
     let count = scores.fold(0, |i, v| if *v > p.similarity { i + 1 } else { i });
     Ok(count > 0)
 }
