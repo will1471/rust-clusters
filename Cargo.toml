@@ -15,6 +15,7 @@ ndarray = { version = "0.15.6", features = ["matrixmultiply-threading", "rayon"]
 regex = "1.7.3"
 lazy_static = "1.4.0"
 bhtsne = "0.5.2"
+rmp-serde = "1.1.1"   # msgpack
 
 [profile.release]
 debug = true          # debug symbols in release build, for heap profile

@@ -29,9 +29,16 @@ pub fn load_text(filename: &str) -> (Vec<Vec<f32>>, Vec<String>) {
     (embeddings, lines)
 }
 
+pub fn dump_as_msgpack<T>(filename: &str, data: &T)
+    where
+        T: serde::ser::Serialize,
+{
+    std::fs::write(filename, rmp_serde::encode::to_vec(data).unwrap()).expect("To write to file");
+}
+
 pub fn dump_as_json<T>(filename: &str, data: &T)
-where
-    T: serde::ser::Serialize,
+    where
+        T: serde::ser::Serialize,
 {
     time_it!(
         "dumping json",
@@ -44,6 +51,15 @@ pub fn load_vectors_from_json(filename: &str) -> Vec<Vec<f32>> {
         "reading vectors from json",
         let buffered_reader = BufReader::new(File::open(filename).unwrap());
         let embeddings = serde_json::from_reader(buffered_reader).expect("failed to parse json");
+    );
+    embeddings
+}
+
+pub fn load_vectors_from_msgpack(filename: &str) -> Vec<Vec<f32>> {
+    time_it!(
+        "reading vectors msgpack",
+        let buffered_reader = BufReader::new(File::open(filename).unwrap());
+        let embeddings = rmp_serde::decode::from_read(buffered_reader).expect("failed to parse msgpack");
     );
     embeddings
 }

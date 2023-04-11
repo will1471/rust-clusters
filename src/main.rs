@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+use std::path::Path;
 use clap::{arg, Command};
 use crate::phatic::PhaticDetectorBuilder;
 
@@ -53,6 +55,13 @@ fn cli() -> Command {
                 .arg(arg!(<CLUSTER_FILE> "outfile file")),
         )
         .subcommand(
+            Command::new("cluster-massive")
+                .about("Cluster a massive file using ideas from https://ntropy.com/post/clustering-millions-of-sentences-to-optimize-the-ml-workflow")
+                .arg(arg!(<VECTOR_FILE> "input file"))
+                .arg(arg!(<CLUSTER_FILE> "outfile file"))
+                .arg(arg!(-c <COUNT> "Optionally sets the number of vectors to include")),
+        )
+        .subcommand(
             Command::new("tsne")
                 .about("Do a clustering, and use tsne to reduce dimensions")
                 .arg(arg!(<VECTOR_FILE> "input file"))
@@ -69,6 +78,14 @@ macro_rules! get_arg {
     };
 }
 
+macro_rules! get_arg_opt {
+    ($matches:expr, $id:literal) => {
+        $matches
+            .get_one::<String>($id)
+            .map(|s| s.as_str())
+    };
+}
+
 fn main() {
     #[cfg(feature = "dhat-heap")]
         let _profiler = dhat::Profiler::new_heap();
@@ -80,8 +97,18 @@ fn main() {
             let input = get_arg!(submatch, "TEXT_FILE");
             let output = get_arg!(submatch, "VECTOR_FILE");
 
+            let ext = Path::new(output).extension().and_then(OsStr::to_str);
+
+            let write = match ext {
+                Some("json") => file::dump_as_json,
+                Some("msgpack") => file::dump_as_msgpack,
+                Some(ext) => panic!("Dont know how to handle extension: {}", ext),
+                None => panic!("Failed to parse extension")
+            };
+
             let (e, _) = file::load_text(input);
-            file::dump_as_json(output, &e);
+
+            write(output, &e);
         }
 
         Some(("phatic", submatch)) => {
@@ -169,6 +196,35 @@ fn main() {
             time_it!(
                 "main_cluster",
                 let clusters = cluster::cluster_using_ndarray_batched_unique_on_the_go(embeddings);
+            );
+            file::dump_as_json(output, &clusters);
+        }
+
+        Some(("cluster-massive", submatch)) => {
+            let input = get_arg!(submatch, "VECTOR_FILE");
+            let output = get_arg!(submatch, "CLUSTER_FILE");
+            let ext = Path::new(input).extension().and_then(OsStr::to_str);
+
+            let read = match ext {
+                Some("json") => file::load_vectors_from_json,
+                Some("msgpack") => file::load_vectors_from_msgpack,
+                Some(ext) => panic!("Dont know how to handle extension: {}", ext),
+                None => panic!("Failed to parse extension")
+            };
+
+            let mut embeddings = read(input);
+
+            if let Some(c) = get_arg_opt!(submatch, "COUNT").and_then(|s| s.parse().ok()) {
+                embeddings.truncate(c);
+            }
+
+            let embeddings = cluster::normalize_all_inplace(embeddings); // 1000000 × 384 × (4 × byte) = 1.536 GB
+
+            println!("count = {}", embeddings.len());
+
+            time_it!(
+                "main_cluster",
+                let clusters = cluster::cluster_massive(embeddings);
             );
             file::dump_as_json(output, &clusters);
         }
