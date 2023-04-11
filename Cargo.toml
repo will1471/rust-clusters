@@ -17,9 +17,16 @@ lazy_static = "1.4.0"
 bhtsne = "0.5.2"
 rmp-serde = "1.1.1"   # msgpack
 
+[dev-dependencies]
+criterion = { version = "0.4", features = ["html_reports"] }
+
 [profile.release]
 debug = true          # debug symbols in release build, for heap profile
 
 [features]
 dhat-heap = []    # if you are doing heap profiling
 dhat-ad-hoc = []  # if you are doing ad hoc profiling
+
+[[bench]]
+name = "my_benchmark"
+harness = false
